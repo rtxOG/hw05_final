@@ -1,6 +1,6 @@
 from django.contrib import admin
 # Из модуля models импортируем модель Post
-from .models import Post, Group
+from .models import Post, Group, Comment
 
 
 class PostAdmin(admin.ModelAdmin):
@@ -22,5 +22,17 @@ class GroupAdmin(admin.ModelAdmin):
     empty_value_display = '-пусто-'
 
 
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ('post',
+                    'author',
+                    'text',
+                    'created',
+                    )
+    search_fields = ('text',)
+    list_filter = ('created',)
+    empty_value_display = '-пусто-'
+
+
 admin.site.register(Post, PostAdmin)
 admin.site.register(Group, GroupAdmin)
+admin.site.register(Comment, CommentAdmin)

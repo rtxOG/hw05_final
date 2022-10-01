@@ -1,17 +1,14 @@
-from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
 
 from posts.forms import PostForm
-from posts.models import Group, Post
+from posts.models import Group, Post, User
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 
 import tempfile
 import shutil
-
-User = get_user_model()
 
 
 class TestCreateForm(TestCase):
@@ -29,7 +26,7 @@ class TestCreateForm(TestCase):
             text='Post from Group1',
             author=cls.author
         )
-
+        cls.user = User.objects.create_user(username='testuser')
         cls.form = PostForm()
 
     @classmethod
@@ -39,9 +36,22 @@ class TestCreateForm(TestCase):
 
     def setUp(self):
         self.guest_client = Client()
-        self.user = User.objects.create_user(username='testuser')
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+
+    def test_guest_client_cant_create_post(self):
+        """Неавторизованный пользователь не может создать пост"""
+        post_count = Post.objects.count()
+        form_data = {
+            'group': self.group.id,
+            'text': 'Отправить текст',
+        }
+        self.guest_client.post(
+            reverse('posts:post_create'),
+            data=form_data,
+            follow=True
+        )
+        self.assertEqual(Post.objects.count(), post_count)
 
     def test_form_create(self):
         """Проверка создания нового поста"""
@@ -87,13 +97,30 @@ class TestCreateForm(TestCase):
         self.authorized_client.post(
             reverse('posts:post_edit', args=[1]), data=form_data, follow=True
         )
-        self.assertTrue(Post.objects.filter(
-            text='Обновленный текст',
-            group=group2).exists())
+        post_testing = Post.objects.latest('id')
+        self.assertEqual(post_testing.text, form_data['text'])
+        self.assertEqual(post_testing.group.id, form_data['group'])
         self.authorized_client.get(reverse(
             'posts:group_list', kwargs={'slug': TestCreateForm.group.slug}
         ))
-        self.assertEqual(Post.objects.filter(group=self.group).count(), 0)
+        self.assertEqual(
+            Post.objects.select_related('group').filter(
+                group=self.group).count(), 0)
+
+    def test_guest_client_cant_create_post(self):
+        """Авторизованный пользователь не может редактировать чужие посты"""
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+        url = reverse('posts:post_edit', args=[1])
+        self.authorized_client.get(url)
+        form_data = {
+            'text': 'Отправить текст',
+        }
+        self.authorized_client.post(
+            reverse('posts:post_edit', args=[1]), data=form_data, follow=True
+        )
+        post_testing = Post.objects.latest('id')
+        self.assertNotEqual(post_testing.text, form_data['text'])
 
     def test_post_with_picture(self):
         """Проверка создания нового поста с картинкой"""

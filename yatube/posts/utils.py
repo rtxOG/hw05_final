@@ -4,10 +4,7 @@ from django.core.paginator import Paginator
 ORDER_COUNT = 10
 
 
-def pagination(DataSet, request):
-    paginator = Paginator(DataSet, ORDER_COUNT)
+def pagination(request, posts, number_of_posts):
+    paginator = Paginator(posts, number_of_posts)
     page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    return {
-        'page_obj': page_obj
-    }
+    return paginator.get_page(page_number)

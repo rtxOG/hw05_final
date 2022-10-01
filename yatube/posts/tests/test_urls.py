@@ -1,10 +1,8 @@
-from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from http import HTTPStatus
+from django.urls import reverse
 
-from posts.models import Group, Post
-
-User = get_user_model()
+from posts.models import Group, Post, User
 
 
 class URLTests(TestCase):
@@ -17,36 +15,58 @@ class URLTests(TestCase):
             slug='groupslug',
             description='Test',
         )
-
         self.post = Post.objects.create(
             group=URLTests.group,
             text="Testing",
             author=self.author,
         )
+        self.user = User.objects.create_user(username='testuser')
 
     def setUp(self):
         self.guest_client = Client()
         self.authorized_client_author = Client()
         self.authorized_client_author.force_login(self.author)
-        self.user = User.objects.create_user(username='testuser')
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
     def test_urls_uses_correct_template(self):
         """Проверка соответствия URL-адреса и соответствующего ему шаблона."""
         templates_url_names = {
-            '/': 'posts/index.html',
-            '/group/groupslug/': 'posts/group_list.html',
-            '/profile/testuser/': 'posts/profile.html',
-            f'/posts/{self.post.pk}/': 'posts/post_detail.html',
-            '/create/': 'posts/create_post.html',
-            f'/posts/{self.post.pk}/edit/': 'posts/create_post.html',
+            reverse('posts:index'): 'posts/index.html',
+            reverse('posts:group_list', args=[self.group.slug]):
+                'posts/group_list.html',
+            reverse('posts:profile', args=[self.user.username]):
+                'posts/profile.html',
+            reverse('posts:post_detail', args=[self.post.pk]):
+                'posts/post_detail.html',
+            reverse('posts:post_create'): 'posts/create_post.html',
+            reverse('posts:post_edit', args=[self.post.pk]):
+                'posts/create_post.html',
             'qwe123': 'core/404.html'
         }
         for url, template in templates_url_names.items():
             with self.subTest(url=url):
                 response = self.authorized_client_author.get(url)
                 self.assertTemplateUsed(response, template)
+
+    def test_urls_uses_correct_template(self):
+        """Reverse возвращает ожидаемые пути."""
+        url_names = {
+            reverse('posts:index'): HTTPStatus.OK,
+            reverse('posts:group_list', args=[self.group.slug]):
+                HTTPStatus.OK,
+            reverse('posts:profile', args=[self.user.username]):
+                HTTPStatus.OK,
+            reverse('posts:post_detail', args=[self.post.pk]):
+                HTTPStatus.OK,
+            reverse('posts:post_create'): HTTPStatus.OK,
+            reverse('posts:post_edit', args=[self.post.pk]):
+                HTTPStatus.OK,
+        }
+        for reverse_url, response_code in url_names.items():
+            with self.subTest():
+                response = self.authorized_client_author.get(reverse_url)
+                self.assertEqual(response.status_code, response_code)
 
     def test_urls_list(self):
         """
@@ -84,10 +104,12 @@ class URLTests(TestCase):
         """
         Тестирование перенаправления пользователей
         """
-        response = self.guest_client.get('/create/', follow=True)
+        response = self.guest_client.get(
+            reverse('posts:post_create'), follow=True
+        )
         self.assertRedirects(response, '/auth/login/?next=/create/')
         response = self.guest_client.get(
-            f'/posts/{self.post.pk}/comment/', follow=True
+            reverse('posts:add_comment', args=[self.post.pk]), follow=True
         )
         self.assertRedirects(
             response, f'/auth/login/?next=/posts/{self.post.pk}/comment/'

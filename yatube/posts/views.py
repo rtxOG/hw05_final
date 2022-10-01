@@ -15,18 +15,21 @@ ORDER_COUNT = 10
 
 def index(request):
     post_list = Post.objects.select_related('group', 'author')
-    context = {}
-    context.update(pagination(post_list, request))
+    page_obj = pagination(request, post_list, ORDER_COUNT)
+    context = {
+        'page_obj': page_obj
+    }
     return render(request, 'posts/index.html', context)
 
 
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
     posts = group.posts.all()
+    page_obj = pagination(request, posts, ORDER_COUNT)
     context = {
         'group': group,
+        'page_obj': page_obj
     }
-    context.update(pagination(posts, request))
     template = 'posts/group_list.html'
     return render(request, template, context)
 
@@ -34,6 +37,7 @@ def group_posts(request, slug):
 def profile(request, username):
     author = get_object_or_404(User, username=username)
     author_posts = author.posts.all()
+    page_obj = pagination(request, author_posts, ORDER_COUNT)
     if request.user.is_authenticated:
         following = Follow.objects.filter(
             user=request.user, author=author
@@ -42,9 +46,9 @@ def profile(request, username):
         following = False
     context = {
         'author': author,
-        'following': following
+        'following': following,
+        'page_obj': page_obj
     }
-    context.update(pagination(author_posts, request))
     return render(request, 'posts/profile.html', context)
 
 
@@ -131,6 +135,6 @@ def profile_follow(request, username):
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
     is_follower = Follow.objects.filter(user=request.user, author=author)
-    if is_follower.exists():
+    if is_follower:
         is_follower.delete()
     return redirect('posts:profile', username=author)

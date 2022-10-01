@@ -12,6 +12,10 @@ class Group(models.Model):
     def __str__(self) -> str:
         return self.title
 
+    class Meta:
+        verbose_name = 'Группа'
+        verbose_name_plural = 'Группы'
+
 
 class Post(models.Model):
     text = models.TextField(
@@ -44,6 +48,7 @@ class Post(models.Model):
 
     class Meta:
         verbose_name = 'Пост'
+        verbose_name_plural = 'Посты'
         ordering = ['pub_date']
 
 
@@ -62,7 +67,11 @@ class Comment(models.Model):
     created = models.DateTimeField("date published", auto_now_add=True)
 
     def __str__(self):
-        return self.text
+        return self.text[:15]
+
+    class Meta:
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
 
 
 class Follow(models.Model):

@@ -1,9 +1,6 @@
-from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from ..models import Group, Post
-
-User = get_user_model()
+from posts.models import Group, Post, User
 
 
 class PostModelTest(TestCase):
@@ -18,7 +15,7 @@ class PostModelTest(TestCase):
         )
         cls.post = Post.objects.create(
             author=cls.user,
-            text='Тестовый пост',
+            text='Тестовый пост, составляющий больше 15 символов',
         )
 
     def test_models_have_correct_object_names(self):
@@ -27,7 +24,7 @@ class PostModelTest(TestCase):
         expected_object_name = group.title
         self.assertEqual(expected_object_name, str(group))
         post = PostModelTest.post
-        expected_object_name = post.text
+        expected_object_name = post.text[:15]
         self.assertEqual(expected_object_name, str(post))
 
     def test_title_label(self):

@@ -1,17 +1,17 @@
 from django import forms
-from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.cache import cache
 
-from posts.models import Group, Post, Comment, Follow
+from posts.models import Group, Post, Comment, Follow, User
 
 import tempfile
 import shutil
 
-User = get_user_model()
+POSTS_ON_FIRST_PAGE = 10
+POSTS_ON_SECOND_PAGE = 3
 
 
 class ViewTests(TestCase):
@@ -53,6 +53,7 @@ class ViewTests(TestCase):
             text='Post from Group2',
             author=self.author
         )
+        self.user = User.objects.create_user(username='testuser')
 
     @classmethod
     def tearDownClass(cls):
@@ -63,7 +64,6 @@ class ViewTests(TestCase):
         self.guest_client = Client()
         self.authorized_client_author = Client()
         self.authorized_client_author.force_login(self.author)
-        self.user = User.objects.create_user(username='testuser')
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
@@ -92,6 +92,8 @@ class ViewTests(TestCase):
     def test_index_show_correct_context(self):
         """Шаблон index сформирован с правильным контекстом."""
         response = self.authorized_client.get(reverse('posts:index'))
+        self.assertIn('page_obj', response.context)
+        self.assertIsNotNone(response.context['page_obj'][0])
         first_object = response.context['page_obj'][0]
         self.assertEqual(first_object.text, self.post.text)
         self.assertEqual(
@@ -184,23 +186,17 @@ class ViewTests(TestCase):
         self.assertEqual(Comment.objects.count(), comments_count + 1)
         self.assertEqual(Comment.objects.last(), comment)
 
-    def test_cach_in_index_page(self):
-        """Проверяем работу кеша на главной странице"""
-        response = self.authorized_client.get(reverse('posts:index'))
-        before_clearing_the_cache = response.content
-
-        Post.objects.create(
-            group=self.post.group,
-            text='Новый текст, после кэша',
-            author=User.objects.get(username='testauthor1'))
-
+    def test_cache_in_index_page(self):
+        """Проверяем работу кэша на главной странице"""
+        first_state = self.authorized_client.get(reverse('posts:index'))
+        post_1 = Post.objects.get(pk=1)
+        post_1.text = 'Измененный текст'
+        post_1.save()
+        second_state = self.authorized_client.get(reverse('posts:index'))
+        self.assertEqual(first_state.content, second_state.content)
         cache.clear()
-
-        response = self.authorized_client.get(reverse('posts:index'))
-        after_clearing_the_cache = response.content
-        self.assertNotEqual(
-            before_clearing_the_cache, after_clearing_the_cache
-        )
+        third_state = self.authorized_client.get(reverse('posts:index'))
+        self.assertNotEqual(first_state.content, third_state.content)
 
 
 class PaginatorViewsTest(TestCase):
@@ -241,7 +237,8 @@ class PaginatorViewsTest(TestCase):
         for tested_url in list_urls.keys():
             response = self.client.get(tested_url)
             self.assertEqual(len(
-                response.context.get('page_obj').object_list), 10)
+                response.context.get('page_obj').object_list),
+                POSTS_ON_FIRST_PAGE)
 
     def test_second_page_contains_three_posts(self):
         list_urls = {
@@ -256,7 +253,8 @@ class PaginatorViewsTest(TestCase):
         for tested_url in list_urls.keys():
             response = self.client.get(tested_url)
             self.assertEqual(len(
-                response.context.get('page_obj').object_list), 3)
+                response.context.get('page_obj').object_list),
+                POSTS_ON_SECOND_PAGE)
 
 
 class FollowTests(TestCase):
