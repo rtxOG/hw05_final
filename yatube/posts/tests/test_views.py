@@ -4,6 +4,7 @@ from django.urls import reverse
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.cache import cache
+from django.core.paginator import Page
 
 from posts.models import Group, Post, Comment, Follow, User
 
@@ -93,14 +94,15 @@ class ViewTests(TestCase):
         """Шаблон index сформирован с правильным контекстом."""
         response = self.authorized_client.get(reverse('posts:index'))
         self.assertIn('page_obj', response.context)
-        self.assertIsNotNone(response.context['page_obj'][0])
-        first_object = response.context['page_obj'][0]
-        self.assertEqual(first_object.text, self.post.text)
-        self.assertEqual(
-            first_object.author.username, self.post.author.username
-        )
-        self.assertEqual(first_object.group.title, self.post.group.title)
-        self.assertEqual(first_object.image, 'posts/small.gif')
+        self.assertIsInstance(response.context['page_obj'], Page)
+        if len(response.context['page_obj']) > 0:
+            first_object = response.context['page_obj'][0]
+            self.assertEqual(first_object.text, self.post.text)
+            self.assertEqual(
+                first_object.author.username, self.post.author.username
+            )
+            self.assertEqual(first_object.group.title, self.post.group.title)
+            self.assertEqual(first_object.image, 'posts/small.gif')
 
     def test_group_list_show_correct_context(self):
         """Шаблон группы сформирован с правильным контекстом."""
@@ -209,18 +211,18 @@ class PaginatorViewsTest(TestCase):
             slug='test_slug2',
             description='Тестовое описание')
         cls.posts = []
-        for i in range(13):
+        for i in range(POSTS_ON_FIRST_PAGE + POSTS_ON_SECOND_PAGE):
             cls.posts.append(Post(
                 text=f'Тестовый пост {i}',
                 author=cls.author,
                 group=cls.group
             )
             )
+        cls.user = User.objects.create_user(username='mob2556')
         Post.objects.bulk_create(cls.posts)
 
     def setUp(self):
         self.guest_client = Client()
-        self.user = User.objects.create_user(username='mob2556')
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 

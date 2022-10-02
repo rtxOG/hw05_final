@@ -52,21 +52,20 @@ class URLTests(TestCase):
     def test_urls_uses_correct_template(self):
         """Reverse возвращает ожидаемые пути."""
         url_names = {
-            reverse('posts:index'): HTTPStatus.OK,
+            reverse('posts:index'): '/',
             reverse('posts:group_list', args=[self.group.slug]):
-                HTTPStatus.OK,
+                '/group/groupslug/',
             reverse('posts:profile', args=[self.user.username]):
-                HTTPStatus.OK,
+                '/profile/testuser/',
             reverse('posts:post_detail', args=[self.post.pk]):
-                HTTPStatus.OK,
-            reverse('posts:post_create'): HTTPStatus.OK,
+                f'/posts/{self.post.pk}/',
+            reverse('posts:post_create'): '/create/',
             reverse('posts:post_edit', args=[self.post.pk]):
-                HTTPStatus.OK,
+                f'/posts/{self.post.pk}/edit/',
         }
-        for reverse_url, response_code in url_names.items():
-            with self.subTest():
-                response = self.authorized_client_author.get(reverse_url)
-                self.assertEqual(response.status_code, response_code)
+        for reverse_url, correct_url in url_names.items():
+            with self.subTest(url=reverse_url):
+                self.assertEqual(reverse_url, correct_url)
 
     def test_urls_list(self):
         """
@@ -114,3 +113,7 @@ class URLTests(TestCase):
         self.assertRedirects(
             response, f'/auth/login/?next=/posts/{self.post.pk}/comment/'
         )
+        response = self.authorized_client.get(
+            reverse('posts:post_edit', args=[self.post.pk]), follow=True
+        )
+        self.assertRedirects(response, f'/posts/{self.post.pk}/')

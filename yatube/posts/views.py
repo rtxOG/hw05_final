@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from django.core.paginator import Paginator
+from django.views.decorators.cache import cache_page
 
 from .models import Post, Group, Follow
 from .forms import PostForm, CommentForm
@@ -13,6 +13,7 @@ User = get_user_model()
 ORDER_COUNT = 10
 
 
+@cache_page(20)
 def index(request):
     post_list = Post.objects.select_related('group', 'author')
     page_obj = pagination(request, post_list, ORDER_COUNT)
@@ -114,9 +115,7 @@ def add_comment(request, post_id):
 @login_required
 def follow_index(request):
     list_of_posts = Post.objects.filter(author__following__user=request.user)
-    paginator = Paginator(list_of_posts, 20)
-    page_namber = request.GET.get('page')
-    page_obj = paginator.get_page(page_namber)
+    page_obj = pagination(request, list_of_posts, ORDER_COUNT)
     context = {'page_obj': page_obj}
     return render(request, 'posts/follow.html', context)
 
@@ -135,6 +134,5 @@ def profile_follow(request, username):
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
     is_follower = Follow.objects.filter(user=request.user, author=author)
-    if is_follower:
-        is_follower.delete()
+    is_follower.delete()
     return redirect('posts:profile', username=author)

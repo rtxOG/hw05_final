@@ -3,10 +3,8 @@
 {% block title %} 
   Главная страница Yatube
 {% endblock %}
-{% load cache %}
 {%block content%}
   <h1>Последние обновления на сайте</h1>
-    {% cache 20 index_page with page_obj %}
     {% for post in page_obj %}
       <article>
         <ul>
@@ -35,6 +33,5 @@
       <article>
       {% if not forloop.last %}<hr>{% endif %}
     {% endfor %}
-    {% endcache %}
     {% include 'posts/includes/paginator.html' %}
 {%endblock%}

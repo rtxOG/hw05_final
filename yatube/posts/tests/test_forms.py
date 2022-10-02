@@ -107,12 +107,10 @@ class TestCreateForm(TestCase):
             Post.objects.select_related('group').filter(
                 group=self.group).count(), 0)
 
-    def test_guest_client_cant_create_post(self):
+    def test_user_client_cant_edit_post(self):
         """Авторизованный пользователь не может редактировать чужие посты"""
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
-        url = reverse('posts:post_edit', args=[1])
-        self.authorized_client.get(url)
         form_data = {
             'text': 'Отправить текст',
         }
@@ -120,7 +118,19 @@ class TestCreateForm(TestCase):
             reverse('posts:post_edit', args=[1]), data=form_data, follow=True
         )
         post_testing = Post.objects.latest('id')
-        self.assertNotEqual(post_testing.text, form_data['text'])
+        self.assertEqual(post_testing.text, self.post.text)
+
+    def test_guest_client_cant_edit_post(self):
+        """Неавторизованный пользователь не может редактировать чужие посты"""
+        self.guest_client = Client()
+        form_data = {
+            'text': 'Отправить текст',
+        }
+        self.guest_client.post(
+            reverse('posts:post_edit', args=[1]), data=form_data, follow=True
+        )
+        post_testing = Post.objects.latest('id')
+        self.assertEqual(post_testing.text, self.post.text)
 
     def test_post_with_picture(self):
         """Проверка создания нового поста с картинкой"""
