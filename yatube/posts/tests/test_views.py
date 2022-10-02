@@ -67,6 +67,7 @@ class ViewTests(TestCase):
         self.authorized_client_author.force_login(self.author)
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        cache.clear()
 
     def test_pages_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон"""
@@ -225,6 +226,7 @@ class PaginatorViewsTest(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        cache.clear()
 
     def test_first_page_contains_ten_posts(self):
         list_urls = {
