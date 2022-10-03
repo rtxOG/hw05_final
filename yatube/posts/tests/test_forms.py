@@ -103,9 +103,7 @@ class TestCreateForm(TestCase):
         self.authorized_client.get(reverse(
             'posts:group_list', kwargs={'slug': TestCreateForm.group.slug}
         ))
-        self.assertEqual(
-            Post.objects.select_related('group').filter(
-                group=self.group).count(), 0)
+        self.assertEqual(TestCreateForm.group.posts.all().count(), 0)
 
     def test_user_client_cant_edit_post(self):
         """Авторизованный пользователь не может редактировать чужие посты"""
@@ -119,6 +117,8 @@ class TestCreateForm(TestCase):
         )
         post_testing = Post.objects.latest('id')
         self.assertEqual(post_testing.text, self.post.text)
+        self.assertEqual(post_testing.group, self.post.group)
+        self.assertEqual(post_testing.author, self.post.author)
 
     def test_guest_client_cant_edit_post(self):
         """Неавторизованный пользователь не может редактировать чужие посты"""
@@ -131,6 +131,8 @@ class TestCreateForm(TestCase):
         )
         post_testing = Post.objects.latest('id')
         self.assertEqual(post_testing.text, self.post.text)
+        self.assertEqual(post_testing.group, self.post.group)
+        self.assertEqual(post_testing.author, self.post.author)
 
     def test_post_with_picture(self):
         """Проверка создания нового поста с картинкой"""

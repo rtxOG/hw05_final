@@ -96,20 +96,22 @@ class ViewTests(TestCase):
         response = self.authorized_client.get(reverse('posts:index'))
         self.assertIn('page_obj', response.context)
         self.assertIsInstance(response.context['page_obj'], Page)
-        if len(response.context['page_obj']) > 0:
-            first_object = response.context['page_obj'][0]
-            self.assertEqual(first_object.text, self.post.text)
-            self.assertEqual(
-                first_object.author.username, self.post.author.username
-            )
-            self.assertEqual(first_object.group.title, self.post.group.title)
-            self.assertEqual(first_object.image, 'posts/small.gif')
+        self.assertTrue(len(response.context['page_obj']) > 0)
+        first_object = response.context['page_obj'][0]
+        self.assertEqual(first_object.text, self.post.text)
+        self.assertEqual(
+            first_object.author.username, self.post.author.username
+        )
+        self.assertEqual(first_object.group.title, self.post.group.title)
+        self.assertEqual(first_object.image, 'posts/small.gif')
 
     def test_group_list_show_correct_context(self):
         """Шаблон группы сформирован с правильным контекстом."""
         response = self.authorized_client.get(reverse(
             'posts:group_list', kwargs={'slug': 'groupslug1'}
         ))
+        self.assertIn('group', response.context)
+        self.assertIsInstance(response.context['group'], Group)
         first_object = response.context['group']
         self.assertEqual(first_object.title, self.post.group.title)
         self.assertEqual(first_object.slug, self.post.group.slug)
@@ -119,6 +121,9 @@ class ViewTests(TestCase):
         response = self.authorized_client.get(reverse(
             'posts:profile', kwargs={'username': 'testauthor1'}
         ))
+        self.assertIn('page_obj', response.context)
+        self.assertIsInstance(response.context['page_obj'], Page)
+        self.assertTrue(len(response.context['page_obj']) > 0)
         first_object = response.context['page_obj'][0]
         self.assertEqual(first_object.image, 'posts/small.gif')
         self.assertEqual(
@@ -131,6 +136,9 @@ class ViewTests(TestCase):
         response = self.authorized_client.get(reverse(
             'posts:group_list', kwargs={'slug': 'groupslug1'}
         ))
+        self.assertIn('page_obj', response.context)
+        self.assertIsInstance(response.context['page_obj'], Page)
+        self.assertTrue(len(response.context['page_obj']) > 0)
         first_object = response.context['page_obj'][0]
         self.assertTrue(first_object.text, 'Post from Group2')
 
@@ -150,6 +158,8 @@ class ViewTests(TestCase):
         response = self.authorized_client.get(reverse(
             'posts:post_detail', kwargs={'post_id': ViewTests.post.pk}
         ))
+        self.assertIn('post', response.context)
+        self.assertIsInstance(response.context['post'], Post)
         first_object = response.context['post']
         self.assertEqual(first_object.image, 'posts/small.gif')
         self.assertEqual(first_object.pk, ViewTests.post.pk)
@@ -192,7 +202,7 @@ class ViewTests(TestCase):
     def test_cache_in_index_page(self):
         """Проверяем работу кэша на главной странице"""
         first_state = self.authorized_client.get(reverse('posts:index'))
-        post_1 = Post.objects.get(pk=1)
+        post_1 = Post.objects.first()
         post_1.text = 'Измененный текст'
         post_1.save()
         second_state = self.authorized_client.get(reverse('posts:index'))

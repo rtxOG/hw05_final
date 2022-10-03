@@ -1,6 +1,7 @@
 from django.test import TestCase, Client
 from http import HTTPStatus
 from django.urls import reverse
+from django.core.cache import cache
 
 from posts.models import Group, Post, User
 
@@ -28,6 +29,7 @@ class URLTests(TestCase):
         self.authorized_client_author.force_login(self.author)
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        cache.clear()
 
     def test_urls_uses_correct_template(self):
         """Проверка соответствия URL-адреса и соответствующего ему шаблона."""
@@ -49,7 +51,7 @@ class URLTests(TestCase):
                 response = self.authorized_client_author.get(url)
                 self.assertTemplateUsed(response, template)
 
-    def test_urls_uses_correct_template(self):
+    def test_reverse_returns_correct_path(self):
         """Reverse возвращает ожидаемые пути."""
         url_names = {
             reverse('posts:index'): '/',
@@ -72,10 +74,10 @@ class URLTests(TestCase):
         Тестирование страниц, доступных не авторизованному пользователю
         """
         url_response_status_code = {
-            '/': HTTPStatus.OK,
-            '/group/groupslug/': HTTPStatus.OK,
-            '/profile/testuser/': HTTPStatus.OK,
-            f'/posts/{self.post.pk}/': HTTPStatus.OK,
+            reverse('posts:index'): HTTPStatus.OK,
+            reverse('posts:group_list', args=[self.group.slug]): HTTPStatus.OK,
+            reverse('posts:profile', args=[self.user.username]): HTTPStatus.OK,
+            reverse('posts:post_detail', args=[self.post.pk]): HTTPStatus.OK,
             '/unexisting_page/': HTTPStatus.NOT_FOUND,
         }
         for url, status_code in url_response_status_code.items():
@@ -117,3 +119,9 @@ class URLTests(TestCase):
             reverse('posts:post_edit', args=[self.post.pk]), follow=True
         )
         self.assertRedirects(response, f'/posts/{self.post.pk}/')
+        response = self.guest_client.get(
+            reverse('posts:post_edit', args=[self.post.pk]), follow=True
+        )
+        self.assertRedirects(
+            response, f'/auth/login/?next=/posts/{self.post.pk}/edit/'
+        )
