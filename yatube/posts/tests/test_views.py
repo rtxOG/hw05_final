@@ -202,9 +202,9 @@ class ViewTests(TestCase):
     def test_cache_in_index_page(self):
         """Проверяем работу кэша на главной странице"""
         first_state = self.authorized_client.get(reverse('posts:index'))
-        post_1 = Post.objects.first()
-        post_1.text = 'Измененный текст'
-        post_1.save()
+        testing_post = Post.objects.first()
+        testing_post.text = 'Измененный текст'
+        testing_post.save()
         second_state = self.authorized_client.get(reverse('posts:index'))
         self.assertEqual(first_state.content, second_state.content)
         cache.clear()
